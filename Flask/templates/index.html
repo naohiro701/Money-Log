@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HouseholdAccount v3 | 管理ダッシュボード</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    :root {
+      --bg: #f4efe2;
+      --panel: rgba(255, 252, 245, 0.94);
+      --line: rgba(34, 58, 67, 0.12);
+      --ink: #24363f;
+      --muted: #64767f;
+      --accent: #0a6c74;
+      --accent-strong: #055a61;
+      --accent-soft: #d6efee;
+      --warm: #ea7b45;
+      --warm-soft: #f9e2d5;
+      --danger: #ad3d3d;
+      --shadow: 0 18px 44px rgba(45, 61, 67, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(10, 108, 116, 0.15), transparent 28%),
+        radial-gradient(circle at top right, rgba(234, 123, 69, 0.12), transparent 24%),
+        linear-gradient(180deg, #f8f2e7 0%, #f2eee7 100%);
+    }
+
+    .shell {
+      max-width: 1480px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .hero-panel,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-panel {
+      padding: 28px;
+    }
+
+    .hero h1 {
+      margin: 8px 0 14px;
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      margin: 0;
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .badge {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: white;
+      border: 1px solid rgba(10, 108, 116, 0.16);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--accent-strong);
+    }
+
+    .hero-side {
+      padding: 28px;
+      display: grid;
+      gap: 14px;
+      align-content: start;
+      background:
+        linear-gradient(160deg, rgba(10, 108, 116, 0.94), rgba(19, 52, 66, 0.96));
+      color: white;
+    }
+
+    .hero-side a {
+      color: white;
+      text-decoration: none;
+    }
+
+    .hero-side .link-card {
+      padding: 16px 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 18px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.83rem;
+      margin-bottom: 10px;
+    }
+
+    .stat-value {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .filter-card {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: white;
+      padding: 12px 13px;
+      color: var(--ink);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 90px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-button {
+      background: var(--accent);
+      color: white;
+    }
+
+    .secondary-button {
+      background: var(--warm-soft);
+      color: #8b3b1c;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .card-head h2,
+    .card-head h3 {
+      margin: 0;
+      font-size: 1.12rem;
+    }
+
+    .card-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.6;
+    }
+
+    .map-card,
+    .editor-card,
+    .analysis-card,
+    .table-card,
+    .audit-card {
+      padding: 20px;
+    }
+
+    #map {
+      height: 540px;
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #dce7e8;
+    }
+
+    .map-empty {
+      height: 540px;
+      border-radius: 22px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      background: linear-gradient(135deg, rgba(10, 108, 116, 0.04), rgba(234, 123, 69, 0.08));
+    }
+
+    .editor-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .editor-grid .full {
+      grid-column: 1 / -1;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+
+    .analysis-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 82px 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-label {
+      font-size: 0.84rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(10, 108, 116, 0.12);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--warm));
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      min-width: 900px;
+    }
+
+    thead {
+      background: rgba(10, 108, 116, 0.08);
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 14px 12px;
+      border-bottom: 1px solid rgba(34, 58, 67, 0.08);
+      font-size: 0.92rem;
+      vertical-align: top;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+
+    tbody tr:hover {
+      background: rgba(10, 108, 116, 0.04);
+    }
+
+    tbody tr.active {
+      background: rgba(10, 108, 116, 0.08);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .status-confirmed { background: rgba(10, 108, 116, 0.12); color: var(--accent-strong); }
+    .status-draft { background: rgba(234, 123, 69, 0.16); color: #8b3b1c; }
+    .status-failed { background: rgba(173, 61, 61, 0.14); color: var(--danger); }
+
+    .audit-list,
+    .issues-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .audit-item,
+    .issue-item {
+      padding: 14px;
+      border-radius: 16px;
+      background: white;
+      border: 1px solid var(--line);
+    }
+
+    .issue-item strong,
+    .audit-item strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .channel-badge {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(36, 54, 63, 0.08);
+      color: var(--ink);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .footer-note {
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .main-grid,
+      .analysis-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid,
+      .filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        padding: 16px;
+      }
+
+      .stats-grid,
+      .filters,
+      .editor-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #map,
+      .map-empty {
+        height: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-panel">
+        <p class="eyebrow">HouseholdAccount v3</p>
+        <h1>LINE入力、レシートOCR、地図可視化を一つの台帳へ。</h1>
+        <p>
+          一般の利用者には「簡単に登録できる体験」を、運用者には「後から直せる管理画面」を提供するための v3 ダッシュボードです。
+          Google Apps Script と接続されていれば本番データを扱い、未接続でもローカル JSON で画面検証できます。
+        </p>
+        <div class="badge-row">
+          <span class="badge">LINE</span>
+          <span class="badge">OCR</span>
+          <span class="badge">Spreadsheet</span>
+          <span class="badge">Calendar Sync</span>
+          <span class="badge">Map + Edit + Analytics</span>
+        </div>
+      </div>
+      <aside class="hero-side">
+        <div class="link-card">
+          <strong>接続状態</strong>
+          <p>{{ "GAS 接続あり" if gas_connected else "ローカルデモモード" }}</p>
+        </div>
+        <div class="link-card">
+          <strong><a href="/balance-sheet">家庭バランスシートを見る</a></strong>
+          <p>フローの家計簿と、ストックの資産・負債を分けて確認できます。</p>
+        </div>
+        <div class="link-card">
+          <strong>編集の考え方</strong>
+          <p>OCR は完全ではないため、日付・店舗・住所・カテゴリ・明細を直せる前提で設計しています。</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="stats-grid" id="statsGrid"></section>
+
+    <section class="card filter-card">
+      <div class="card-head">
+        <div>
+          <h2>絞り込み</h2>
+          <p>期間、カテゴリ、状態、キーワードでデータを絞り込みます。</p>
+        </div>
+      </div>
+      <div class="filters">
+        <div class="field">
+          <label for="filterFrom">開始日</label>
+          <input id="filterFrom" type="date">
+        </div>
+        <div class="field">
+          <label for="filterTo">終了日</label>
+          <input id="filterTo" type="date">
+        </div>
+        <div class="field">
+          <label for="filterCategory">大分類</label>
+          <select id="filterCategory"></select>
+        </div>
+        <div class="field">
+          <label for="filterStatus">状態</label>
+          <select id="filterStatus">
+            <option value="">すべて</option>
+            <option value="confirmed">confirmed</option>
+            <option value="draft">draft</option>
+            <option value="failed">failed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filterSearch">キーワード</label>
+          <input id="filterSearch" type="text" placeholder="店舗名・住所・カテゴリ">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="secondary-button" id="resetFilters">フィルタを解除</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <article class="card map-card">
+        <div class="card-head">
+          <div>
+            <h2>地図ビュー</h2>
+            <p>座標付きの取引を地図に描画します。行を選ぶと該当地点へ移動します。</p>
+          </div>
+          <span class="pill" id="mapCountPill">0 件表示</span>
+        </div>
+        <div id="map"></div>
+      </article>
+
+      <aside class="card editor-card">
+        <div class="card-head">
+          <div>
+            <h2>編集パネル</h2>
+            <p>選択した取引の内容を修正し、台帳へ保存します。</p>
+          </div>
+          <span class="pill" id="selectedChannel">未選択</span>
+        </div>
+        <div class="editor-grid">
+          <div class="field">
+            <label for="txDate">日付</label>
+            <input id="txDate" type="date">
+          </div>
+          <div class="field">
+            <label for="txTime">時刻</label>
+            <input id="txTime" type="time" step="1">
+          </div>
+          <div class="field">
+            <label for="txAmount">金額</label>
+            <input id="txAmount" type="number" min="0">
+          </div>
+          <div class="field">
+            <label for="txStatus">状態</label>
+            <select id="txStatus">
+              <option value="confirmed">confirmed</option>
+              <option value="draft">draft</option>
+              <option value="failed">failed</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="txStoreName">店舗名</label>
+            <input id="txStoreName" type="text">
+          </div>
+          <div class="field full">
+            <label for="txStoreAddress">住所</label>
+            <input id="txStoreAddress" type="text">
+          </div>
+          <div class="field">
+            <label for="txCategoryMain">大分類</label>
+            <select id="txCategoryMain"></select>
+          </div>
+          <div class="field">
+            <label for="txCategorySub">中分類</label>
+            <select id="txCategorySub"></select>
+          </div>
+          <div class="field full">
+            <label for="txCategoryDetail">小分類</label>
+            <select id="txCategoryDetail"></select>
+          </div>
+          <div class="field">
+            <label for="txPaymentMethod">支払方法</label>
+            <input id="txPaymentMethod" type="text" placeholder="現金 / クレジット など">
+          </div>
+          <div class="field">
+            <label for="txSource">元データ</label>
+            <input id="txSource" type="text" placeholder="OCR JSON や元テキストなど">
+          </div>
+          <div class="field full">
+            <label for="txItems">明細</label>
+            <textarea id="txItems" placeholder="例: 牛乳,1,248&#10;卵,1,198"></textarea>
+          </div>
+          <div class="field full">
+            <button class="primary-button" id="saveButton">この内容で保存する</button>
+          </div>
+        </div>
+        <p class="footer-note" id="editorMeta">左の一覧から取引を選択してください。</p>
+      </aside>
+    </section>
+
+    <section class="analysis-grid">
+      <article class="card analysis-card">
+        <div class="card-head">
+          <div>
+            <h3>月別支出</h3>
+            <p>フィルタ後の取引を月単位で集計しています。</p>
+          </div>
+        </div>
+        <div class="bars" id="monthlyBars"></div>
+      </article>
+
+      <article class="card analysis-card">
+        <div class="card-head">
+          <div>
+            <h3>要確認データ</h3>
+            <p>住所未解決、下書き、失敗データを優先的に見直せます。</p>
+          </div>
+        </div>
+        <div class="issues-list" id="issueList"></div>
+      </article>
+    </section>
+
+    <section class="card table-card">
+      <div class="card-head">
+        <div>
+          <h2>取引一覧</h2>
+          <p>行をクリックすると右側の編集パネルと監査ログが切り替わります。</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>店舗</th>
+              <th>金額</th>
+              <th>カテゴリ</th>
+              <th>状態</th>
+              <th>入力経路</th>
+              <th>住所</th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card audit-card">
+      <div class="card-head">
+        <div>
+          <h2>監査ログ</h2>
+          <p>誰がどの取引を直したかを追跡します。</p>
+        </div>
+      </div>
+      <div class="audit-list" id="auditList"></div>
+    </section>
+  </div>
+
+  <script>
+    const categoryTree = {{ category_tree | tojson }};
+    let transactions = {{ initial_transactions | tojson }};
+    let selectedTransactionId = transactions.length ? transactions[0].transaction_id : null;
+
+    const statusMeta = {
+      confirmed: "status status-confirmed",
+      draft: "status status-draft",
+      failed: "status status-failed"
+    };
+
+    const categoryColors = {
+      "生活費(食住)": "#0a6c74",
+      "もの支出(娯楽・自己投資)": "#ea7b45",
+      "こと支出(移動等)": "#556271",
+      "保留": "#9a6f2f"
+    };
+
+    const initialSummary = {{ initial_summary | tojson }};
+    const initialMonthly = {{ initial_monthly | tojson }};
+    const initialCategoryBreakdown = {{ initial_category_breakdown | tojson }};
+
+    let map;
+    let markersLayer;
+
+    function yen(value) {
+      return `${Number(value || 0).toLocaleString("ja-JP")}円`;
+    }
+
+    function summarize(rows) {
+      const totalAmount = rows.reduce((sum, row) => sum + Number(row.amount_total || 0), 0);
+      const geocodedCount = rows.filter((row) => row.lat !== "" && row.lat !== "unknown" && row.lon !== "" && row.lon !== "unknown").length;
+      const draftCount = rows.filter((row) => row.status === "draft").length;
+      const failedCount = rows.filter((row) => row.status === "failed").length;
+      const unresolvedCount = rows.filter((row) => !row.store_address || row.store_address === "unknown" || row.category_main === "保留").length;
+      return {
+        transaction_count: rows.length,
+        total_amount: totalAmount,
+        geocoded_count: geocodedCount,
+        draft_count: draftCount,
+        failed_count: failedCount,
+        unresolved_count: unresolvedCount
+      };
+    }
+
+    function buildMonthly(rows) {
+      const buckets = {};
+      rows.forEach((row) => {
+        const month = (row.date || "unknown").slice(0, 7);
+        buckets[month] = buckets[month] || { month, total_amount: 0, transaction_count: 0 };
+        buckets[month].total_amount += Number(row.amount_total || 0);
+        buckets[month].transaction_count += 1;
+      });
+      return Object.values(buckets).sort((a, b) => a.month.localeCompare(b.month));
+    }
+
+    function filteredTransactions() {
+      const from = document.getElementById("filterFrom").value;
+      const to = document.getElementById("filterTo").value;
+      const category = document.getElementById("filterCategory").value;
+      const status = document.getElementById("filterStatus").value;
+      const search = document.getElementById("filterSearch").value.trim().toLowerCase();
+
+      return transactions.filter((row) => {
+        if (from && row.date < from) return false;
+        if (to && row.date > to) return false;
+        if (category && row.category_main !== category) return false;
+        if (status && row.status !== status) return false;
+        if (search) {
+          const haystack = [
+            row.store_name,
+            row.store_address,
+            row.category_main,
+            row.category_sub,
+            row.category_detail
+          ].join(" ").toLowerCase();
+          if (!haystack.includes(search)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderStats(rows) {
+      const summary = rows.length === transactions.length ? initialSummary : summarize(rows);
+      const cards = [
+        ["総取引数", `${summary.transaction_count}件`],
+        ["総支出", yen(summary.total_amount)],
+        ["地図表示可能", `${summary.geocoded_count}件`],
+        ["下書き", `${summary.draft_count}件`],
+        ["失敗", `${summary.failed_count}件`],
+        ["要確認", `${summary.unresolved_count}件`]
+      ];
+
+      document.getElementById("statsGrid").innerHTML = cards.map(([label, value]) => `
+        <article class="card stat">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${value}</div>
+        </article>
+      `).join("");
+    }
+
+    function initMap() {
+      map = L.map("map", { zoomControl: true }).setView([35.681236, 139.767125], 5);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap contributors"
+      }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+      renderMap(filteredTransactions());
+    }
+
+    function renderMap(rows) {
+      if (!map || !markersLayer) return;
+      markersLayer.clearLayers();
+
+      const mapRows = rows.filter((row) => row.lat !== "" && row.lat !== "unknown" && row.lon !== "" && row.lon !== "unknown");
+      document.getElementById("mapCountPill").textContent = `${mapRows.length} 件表示`;
+
+      if (!mapRows.length) return;
+
+      const bounds = [];
+      mapRows.forEach((row) => {
+        const lat = Number(row.lat);
+        const lon = Number(row.lon);
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+        const color = categoryColors[row.category_main] || "#556271";
+        const marker = L.circleMarker([lat, lon], {
+          radius: Math.max(6, Math.sqrt(Number(row.amount_total || 0)) / 20),
+          fillColor: color,
+          color: "#ffffff",
+          weight: 2,
+          opacity: 1,
+          fillOpacity: 0.88
+        });
+        marker.bindPopup(`
+          <strong>${row.store_name || "名称未設定"}</strong><br>
+          ${row.date} ${row.time}<br>
+          ${yen(row.amount_total)}<br>
+          ${row.category_main} / ${row.category_sub} / ${row.category_detail}
+        `);
+        marker.on("click", () => selectTransaction(row.transaction_id));
+        markersLayer.addLayer(marker);
+        bounds.push([lat, lon]);
+      });
+
+      if (bounds.length) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+    }
+
+    function renderMonthly(rows) {
+      const monthly = rows.length === transactions.length ? initialMonthly : buildMonthly(rows);
+      const maxValue = Math.max(...monthly.map((row) => Number(row.total_amount || 0)), 1);
+      const target = document.getElementById("monthlyBars");
+      if (!monthly.length) {
+        target.innerHTML = `<div class="muted">該当データがありません。</div>`;
+        return;
+      }
+      target.innerHTML = monthly.map((row) => `
+        <div class="bar-row">
+          <div class="bar-label">${row.month}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, (Number(row.total_amount || 0) / maxValue) * 100)}%"></div></div>
+          <div>${yen(row.total_amount)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderIssues(rows) {
+      const issues = rows.filter((row) => !row.store_address || row.store_address === "unknown" || row.status !== "confirmed" || row.category_main === "保留");
+      const target = document.getElementById("issueList");
+      if (!issues.length) {
+        target.innerHTML = `<div class="issue-item"><strong>問題なし</strong><div class="muted">現在のフィルタ範囲では優先確認データはありません。</div></div>`;
+        return;
+      }
+
+      target.innerHTML = issues.slice(0, 8).map((row) => `
+        <div class="issue-item" onclick="selectTransaction('${row.transaction_id}')">
+          <strong>${row.store_name || "名称未設定"} / ${yen(row.amount_total)}</strong>
+          <div class="muted">${row.date} ${row.time}</div>
+          <div class="muted">${row.store_address || "住所未設定"} / ${row.status}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderTable(rows) {
+      const tbody = document.getElementById("transactionTableBody");
+      tbody.innerHTML = rows.map((row) => `
+        <tr data-id="${row.transaction_id}" class="${row.transaction_id === selectedTransactionId ? "active" : ""}">
+          <td>${row.date}<br><span class="muted">${row.time}</span></td>
+          <td><strong>${row.store_name || "名称未設定"}</strong></td>
+          <td>${yen(row.amount_total)}</td>
+          <td>${row.category_main}<br><span class="muted">${row.category_sub} / ${row.category_detail}</span></td>
+          <td><span class="${statusMeta[row.status] || "status"}">${row.status}</span></td>
+          <td><span class="channel-badge">${row.input_channel}</span></td>
+          <td>${row.store_address || "未設定"}</td>
+        </tr>
+      `).join("");
+
+      tbody.querySelectorAll("tr").forEach((row) => {
+        row.addEventListener("click", () => selectTransaction(row.dataset.id));
+      });
+    }
+
+    function fillFilterOptions() {
+      const categorySelect = document.getElementById("filterCategory");
+      categorySelect.innerHTML = `<option value="">すべて</option>` + Object.keys(categoryTree).map((key) => `<option value="${key}">${key}</option>`).join("");
+    }
+
+    function fillCategoryMainOptions(selectedValue) {
+      const select = document.getElementById("txCategoryMain");
+      select.innerHTML = Object.keys(categoryTree).map((key) => `<option value="${key}" ${key === selectedValue ? "selected" : ""}>${key}</option>`).join("");
+    }
+
+    function fillCategorySubOptions(mainValue, selectedValue) {
+      const select = document.getElementById("txCategorySub");
+      const options = Object.keys(categoryTree[mainValue] || {});
+      select.innerHTML = options.map((key) => `<option value="${key}" ${key === selectedValue ? "selected" : ""}>${key}</option>`).join("");
+    }
+
+    function fillCategoryDetailOptions(mainValue, subValue, selectedValue) {
+      const select = document.getElementById("txCategoryDetail");
+      const options = (categoryTree[mainValue] && categoryTree[mainValue][subValue]) || [];
+      select.innerHTML = options.map((key) => `<option value="${key}" ${key === selectedValue ? "selected" : ""}>${key}</option>`).join("");
+    }
+
+    function serializeItems(items) {
+      return (items || []).map((item) => `${item.name},${item.quantity},${item.unit_price}`).join("\n");
+    }
+
+    function parseItems(text) {
+      return text.split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [name, quantity, unitPrice] = line.split(",").map((value) => value.trim());
+          return {
+            name: name || "item",
+            quantity: Number(quantity || 1),
+            unit_price: Number(unitPrice || 0)
+          };
+        });
+    }
+
+    async function selectTransaction(transactionId) {
+      selectedTransactionId = transactionId;
+      document.querySelectorAll("#transactionTableBody tr").forEach((row) => {
+        row.classList.toggle("active", row.dataset.id === transactionId);
+      });
+
+      const response = await fetch(`/api/transactions/${transactionId}`);
+      const body = await response.json();
+      if (!response.ok || !body.ok) return;
+
+      const tx = body.transaction;
+      fillCategoryMainOptions(tx.category_main || "保留");
+      fillCategorySubOptions(tx.category_main || "保留", tx.category_sub || "未分類");
+      fillCategoryDetailOptions(tx.category_main || "保留", tx.category_sub || "未分類", tx.category_detail || "未分類");
+
+      document.getElementById("txDate").value = tx.date || "";
+      document.getElementById("txTime").value = tx.time || "12:00:00";
+      document.getElementById("txAmount").value = tx.amount_total || 0;
+      document.getElementById("txStatus").value = tx.status || "confirmed";
+      document.getElementById("txStoreName").value = tx.store_name || "";
+      document.getElementById("txStoreAddress").value = tx.store_address || "";
+      document.getElementById("txPaymentMethod").value = tx.payment_method || "";
+      document.getElementById("txSource").value = tx.source_message || "";
+      document.getElementById("txItems").value = serializeItems(tx.items || []);
+      document.getElementById("selectedChannel").textContent = tx.input_channel || "manual";
+      document.getElementById("editorMeta").textContent = `取引ID: ${tx.transaction_id} / 更新日時: ${tx.updated_at}`;
+
+      if (map && tx.lat !== "" && tx.lat !== "unknown" && tx.lon !== "" && tx.lon !== "unknown") {
+        map.flyTo([Number(tx.lat), Number(tx.lon)], 14, { animate: true, duration: 0.7 });
+      }
+
+      loadAuditLogs(transactionId);
+    }
+
+    async function loadAuditLogs(transactionId) {
+      const response = await fetch(`/api/audit-logs?transaction_id=${encodeURIComponent(transactionId)}`);
+      const body = await response.json();
+      const target = document.getElementById("auditList");
+      const logs = body.audit_logs || [];
+
+      if (!logs.length) {
+        target.innerHTML = `<div class="audit-item"><strong>履歴なし</strong><div class="muted">この取引の監査ログはまだありません。</div></div>`;
+        return;
+      }
+
+      target.innerHTML = logs.map((row) => `
+        <div class="audit-item">
+          <strong>${row.action} / ${row.actor_user_id || "unknown"}</strong>
+          <div class="muted">${row.timestamp}</div>
+          <div class="muted">transaction_id: ${row.transaction_id}</div>
+        </div>
+      `).join("");
+    }
+
+    async function saveSelectedTransaction() {
+      if (!selectedTransactionId) {
+        alert("先に取引を選択してください。");
+        return;
+      }
+
+      const payload = {
+        date: document.getElementById("txDate").value,
+        time: document.getElementById("txTime").value,
+        amount_total: Number(document.getElementById("txAmount").value || 0),
+        status: document.getElementById("txStatus").value,
+        store_name: document.getElementById("txStoreName").value,
+        store_address: document.getElementById("txStoreAddress").value,
+        category_main: document.getElementById("txCategoryMain").value,
+        category_sub: document.getElementById("txCategorySub").value,
+        category_detail: document.getElementById("txCategoryDetail").value,
+        payment_method: document.getElementById("txPaymentMethod").value,
+        source_message: document.getElementById("txSource").value,
+        items: parseItems(document.getElementById("txItems").value)
+      };
+
+      const response = await fetch(`/api/transactions/${selectedTransactionId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Actor-User": "flask-dashboard"
+        },
+        body: JSON.stringify(payload)
+      });
+      const body = await response.json();
+      if (!response.ok || !body.ok) {
+        alert(`保存に失敗しました: ${body.error || "unknown error"}`);
+        return;
+      }
+
+      await refreshDashboard();
+      await selectTransaction(selectedTransactionId);
+      alert("保存しました。");
+    }
+
+    async function refreshDashboard() {
+      const response = await fetch("/api/transactions");
+      const body = await response.json();
+      transactions = body.transactions || [];
+      renderAll();
+    }
+
+    function renderAll() {
+      const rows = filteredTransactions();
+      renderStats(rows);
+      renderTable(rows);
+      renderMap(rows);
+      renderMonthly(rows);
+      renderIssues(rows);
+    }
+
+    function setDefaultFilterRange() {
+      const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+      if (!sorted.length) return;
+      document.getElementById("filterFrom").value = sorted[0].date || "";
+      document.getElementById("filterTo").value = sorted[sorted.length - 1].date || "";
+    }
+
+    document.getElementById("txCategoryMain").addEventListener("change", (event) => {
+      const main = event.target.value;
+      const firstSub = Object.keys(categoryTree[main] || {})[0] || "未分類";
+      fillCategorySubOptions(main, firstSub);
+      fillCategoryDetailOptions(main, firstSub, ((categoryTree[main] || {})[firstSub] || [])[0] || "未分類");
+    });
+
+    document.getElementById("txCategorySub").addEventListener("change", (event) => {
+      const main = document.getElementById("txCategoryMain").value;
+      const sub = event.target.value;
+      fillCategoryDetailOptions(main, sub, ((categoryTree[main] || {})[sub] || [])[0] || "未分類");
+    });
+
+    ["filterFrom", "filterTo", "filterCategory", "filterStatus", "filterSearch"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", renderAll);
+      document.getElementById(id).addEventListener("change", renderAll);
+    });
+
+    document.getElementById("resetFilters").addEventListener("click", () => {
+      document.getElementById("filterCategory").value = "";
+      document.getElementById("filterStatus").value = "";
+      document.getElementById("filterSearch").value = "";
+      setDefaultFilterRange();
+      renderAll();
+    });
+
+    document.getElementById("saveButton").addEventListener("click", saveSelectedTransaction);
+
+    fillFilterOptions();
+    setDefaultFilterRange();
+    fillCategoryMainOptions("保留");
+    fillCategorySubOptions("保留", "未分類");
+    fillCategoryDetailOptions("保留", "未分類", "未分類");
+    renderStats(transactions);
+    renderMonthly(transactions);
+    renderIssues(transactions);
+    renderTable(transactions);
+    initMap();
+    if (selectedTransactionId) {
+      selectTransaction(selectedTransactionId);
+    } else {
+      document.getElementById("auditList").innerHTML = `<div class="audit-item"><strong>取引なし</strong><div class="muted">まだ表示できる取引がありません。</div></div>`;
+    }
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,132 @@
+[
+  {
+    "transaction_id": "tx_202603150001",
+    "event_id": "line_evt_receipt_001",
+    "user_id": "demo-user",
+    "input_channel": "receipt_image",
+    "status": "confirmed",
+    "date": "2026-03-15",
+    "time": "18:42:00",
+    "amount_total": 2480,
+    "store_name": "イオン仙台店",
+    "store_address": "宮城県仙台市青葉区中央2-3-6",
+    "lat": 38.2609,
+    "lon": 140.8796,
+    "category_main": "生活費(食住)",
+    "category_sub": "食費",
+    "category_detail": "食料品",
+    "payment_method": "クレジット",
+    "source_message": "レシート OCR から自動登録",
+    "calendar_event_id": "",
+    "created_at": "2026-03-15T09:42:10Z",
+    "updated_at": "2026-03-15T09:42:10Z",
+    "items": [
+      {
+        "item_id": "item_001",
+        "name": "牛乳",
+        "quantity": 1,
+        "unit_price": 248,
+        "line_amount": 248
+      },
+      {
+        "item_id": "item_002",
+        "name": "卵",
+        "quantity": 1,
+        "unit_price": 228,
+        "line_amount": 228
+      },
+      {
+        "item_id": "item_003",
+        "name": "鶏もも肉",
+        "quantity": 2,
+        "unit_price": 598,
+        "line_amount": 1196
+      },
+      {
+        "item_id": "item_004",
+        "name": "野菜セット",
+        "quantity": 1,
+        "unit_price": 808,
+        "line_amount": 808
+      }
+    ]
+  },
+  {
+    "transaction_id": "tx_202603140001",
+    "event_id": "line_evt_manual_001",
+    "user_id": "demo-user",
+    "input_channel": "manual",
+    "status": "confirmed",
+    "date": "2026-03-14",
+    "time": "08:20:00",
+    "amount_total": 780,
+    "store_name": "仙台駅",
+    "store_address": "宮城県仙台市青葉区中央1-1-1",
+    "lat": 38.2603,
+    "lon": 140.8824,
+    "category_main": "こと支出(移動等)",
+    "category_sub": "移動費",
+    "category_detail": "電車",
+    "payment_method": "交通系IC",
+    "source_message": "LINE 手入力",
+    "calendar_event_id": "",
+    "created_at": "2026-03-14T00:20:00Z",
+    "updated_at": "2026-03-14T00:25:00Z",
+    "items": []
+  },
+  {
+    "transaction_id": "tx_202603130001",
+    "event_id": "line_evt_receipt_002",
+    "user_id": "demo-user",
+    "input_channel": "receipt_image",
+    "status": "failed",
+    "date": "2026-03-13",
+    "time": "20:15:00",
+    "amount_total": 3560,
+    "store_name": "居酒屋サンプル",
+    "store_address": "unknown",
+    "lat": "unknown",
+    "lon": "unknown",
+    "category_main": "保留",
+    "category_sub": "未分類",
+    "category_detail": "未分類",
+    "payment_method": "現金",
+    "source_message": "OCR 結果の確認待ち",
+    "calendar_event_id": "",
+    "created_at": "2026-03-13T11:15:00Z",
+    "updated_at": "2026-03-13T11:15:00Z",
+    "items": [
+      {
+        "item_id": "item_101",
+        "name": "会計合計",
+        "quantity": 1,
+        "unit_price": 3560,
+        "line_amount": 3560
+      }
+    ]
+  },
+  {
+    "transaction_id": "tx_202603120001",
+    "event_id": "line_evt_manual_002",
+    "user_id": "demo-user",
+    "input_channel": "manual",
+    "status": "draft",
+    "date": "2026-03-12",
+    "time": "12:05:00",
+    "amount_total": 1200,
+    "store_name": "",
+    "store_address": "",
+    "lat": "",
+    "lon": "",
+    "category_main": "生活費(食住)",
+    "category_sub": "食費",
+    "category_detail": "昼ご飯",
+    "payment_method": "",
+    "source_message": "LINE 途中入力",
+    "calendar_event_id": "",
+    "created_at": "2026-03-12T03:05:00Z",
+    "updated_at": "2026-03-12T03:06:00Z",
+    "items": []
+  }
+]
+

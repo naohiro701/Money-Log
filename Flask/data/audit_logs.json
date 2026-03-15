@@ -1,0 +1,22 @@
+[
+  {
+    "audit_id": "audit_20260315093000",
+    "timestamp": "2026-03-15T09:30:00Z",
+    "transaction_id": "tx_202603130001",
+    "action": "update_from_flask",
+    "before_json": {
+      "store_name": "居酒屋サンプル",
+      "category_main": "保留",
+      "category_sub": "未分類",
+      "category_detail": "未分類"
+    },
+    "after_json": {
+      "store_name": "居酒屋サンプル",
+      "category_main": "もの支出(娯楽・自己投資)",
+      "category_sub": "交際費",
+      "category_detail": "飲み会"
+    },
+    "actor_user_id": "flask-dashboard"
+  }
+]
+

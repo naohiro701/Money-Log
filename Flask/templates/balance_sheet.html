@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HouseholdAccount v3 | 家庭バランスシート</title>
+  <style>
+    :root {
+      --bg: #f4efe2;
+      --panel: rgba(255, 252, 245, 0.94);
+      --line: rgba(34, 58, 67, 0.12);
+      --ink: #24363f;
+      --muted: #64767f;
+      --accent: #0a6c74;
+      --warm: #ea7b45;
+      --positive: #0b7d54;
+      --negative: #ad3d3d;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(10, 108, 116, 0.15), transparent 28%),
+        linear-gradient(180deg, #f8f2e7 0%, #f2eee7 100%);
+    }
+
+    .shell {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero,
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 24px;
+      margin-bottom: 18px;
+    }
+
+    .hero h1,
+    .card h2 {
+      margin: 0 0 10px;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .hero a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .kpi {
+      padding: 16px;
+      border-radius: 22px;
+      background: white;
+      border: 1px solid var(--line);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    input,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 12px;
+      background: white;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 12px 18px;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .total-box {
+      padding: 16px;
+      border-radius: 18px;
+      background: white;
+      border: 1px solid var(--line);
+    }
+
+    .positive { color: var(--positive); font-weight: 800; }
+    .negative { color: var(--negative); font-weight: 800; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(34, 58, 67, 0.08);
+      text-align: left;
+    }
+
+    th { background: rgba(10, 108, 116, 0.08); }
+
+    @media (max-width: 900px) {
+      .grid,
+      .kpis,
+      .totals {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <h1>家庭バランスシート</h1>
+      <p class="muted">
+        家計簿のフロー情報に加えて、資産・負債・純資産を定期的に記録するページです。
+        支出データの月平均と組み合わせることで、次に何を優先するとよいかを見やすくします。
+      </p>
+      <p><a href="/">管理ダッシュボードへ戻る</a></p>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="muted">年間支出の参考値</div>
+          <strong>{{ baseline.annual_expense }}</strong> 円
+        </div>
+        <div class="kpi">
+          <div class="muted">月平均支出の参考値</div>
+          <strong>{{ baseline.monthly_expense_estimate }}</strong> 円
+        </div>
+        <div class="kpi">
+          <div class="muted">取引件数</div>
+          <strong>{{ baseline.transaction_count }}</strong> 件
+        </div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>資産</h2>
+        <div class="field"><label>現金・預金</label><input id="asset_cash" type="number" value="0"></div>
+        <div class="field"><label>投資資産</label><input id="asset_investments" type="number" value="0"></div>
+        <div class="field"><label>不動産評価額</label><input id="asset_real_estate" type="number" value="0"></div>
+        <div class="field"><label>その他資産</label><input id="asset_other" type="number" value="0"></div>
+      </article>
+
+      <article class="card">
+        <h2>負債</h2>
+        <div class="field"><label>住宅ローン残高</label><input id="liability_mortgage" type="number" value="0"></div>
+        <div class="field"><label>カード・ローン残高</label><input id="liability_card_loan" type="number" value="0"></div>
+        <div class="field"><label>その他負債</label><input id="liability_other" type="number" value="0"></div>
+        <div class="field"><label>メモ</label><textarea id="notes"></textarea></div>
+        <div class="field"><label>次月アクションプラン</label><textarea id="action_plan" placeholder="例: カード負債を2万円返済する"></textarea></div>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>保存と提案</h2>
+      <button onclick="saveSnapshot()">スナップショットを保存する</button>
+      <div class="totals">
+        <div class="total-box">総資産: <strong id="totalAssets">0</strong> 円</div>
+        <div class="total-box">総負債: <strong id="totalLiabilities">0</strong> 円</div>
+        <div class="total-box">純資産: <strong id="netWorth" class="positive">0</strong> 円</div>
+      </div>
+      <p class="muted">改善提案: <span id="recommendation">読み込み中...</span></p>
+    </section>
+
+    <section class="card">
+      <h2>履歴</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>日時</th>
+            <th>総資産</th>
+            <th>総負債</th>
+            <th>純資産</th>
+            <th>アクション</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const initialSnapshots = {{ snapshots | tojson }};
+
+    function valueOf(id) {
+      return Number(document.getElementById(id).value || 0);
+    }
+
+    function recalc() {
+      const totalAssets = valueOf("asset_cash") + valueOf("asset_investments") + valueOf("asset_real_estate") + valueOf("asset_other");
+      const totalLiabilities = valueOf("liability_mortgage") + valueOf("liability_card_loan") + valueOf("liability_other");
+      const netWorth = totalAssets - totalLiabilities;
+
+      document.getElementById("totalAssets").textContent = totalAssets.toLocaleString("ja-JP");
+      document.getElementById("totalLiabilities").textContent = totalLiabilities.toLocaleString("ja-JP");
+      const netNode = document.getElementById("netWorth");
+      netNode.textContent = netWorth.toLocaleString("ja-JP");
+      netNode.className = netWorth >= 0 ? "positive" : "negative";
+    }
+
+    async function loadHistory() {
+      const response = await fetch("/api/balance-sheet/snapshots");
+      const snapshots = await response.json();
+      const body = document.getElementById("historyBody");
+      body.innerHTML = "";
+      snapshots.slice().reverse().forEach((row) => {
+        const className = row.net_worth >= 0 ? "positive" : "negative";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.created_at}</td>
+          <td>${Number(row.total_assets).toLocaleString("ja-JP")} 円</td>
+          <td>${Number(row.total_liabilities).toLocaleString("ja-JP")} 円</td>
+          <td class="${className}">${Number(row.net_worth).toLocaleString("ja-JP")} 円</td>
+          <td>${row.action_plan || ""}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadRecommendation() {
+      const response = await fetch("/api/balance-sheet/recommendation");
+      const body = await response.json();
+      document.getElementById("recommendation").textContent = body.message || "提案なし";
+    }
+
+    async function saveSnapshot() {
+      const payload = {
+        assets: {
+          cash: valueOf("asset_cash"),
+          investments: valueOf("asset_investments"),
+          real_estate: valueOf("asset_real_estate"),
+          other: valueOf("asset_other")
+        },
+        liabilities: {
+          mortgage: valueOf("liability_mortgage"),
+          card_loan: valueOf("liability_card_loan"),
+          other: valueOf("liability_other")
+        },
+        notes: document.getElementById("notes").value || "",
+        action_plan: document.getElementById("action_plan").value || ""
+      };
+
+      const response = await fetch("/api/balance-sheet/snapshots", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const body = await response.json();
+      if (!response.ok || !body.ok) {
+        alert(`保存に失敗しました: ${body.error || "unknown"}`);
+        return;
+      }
+      await loadHistory();
+      await loadRecommendation();
+      alert("保存しました。");
+    }
+
+    ["asset_cash", "asset_investments", "asset_real_estate", "asset_other", "liability_mortgage", "liability_card_loan", "liability_other"]
+      .forEach((id) => document.getElementById(id).addEventListener("input", recalc));
+
+    recalc();
+    loadHistory();
+    loadRecommendation();
+  </script>
+</body>
+</html>
+
