@@ -1,6 +1,6 @@
 # GooleAppsScript
 
-`GooleAppsScript/` は、HouseholdAccount の入力受付、OCR、保存、同期、管理 API を担当する Apps Script です。
+`GooleAppsScript/` は、入力受付、OCR、保存、同期、管理 API を担当する Apps Script です。
 
 ## 役割
 
