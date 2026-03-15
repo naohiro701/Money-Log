@@ -1,6 +1,4 @@
-# HouseholdAccount
-
-HouseholdAccount は、LINE から家計データを登録し、Google スプレッドシートに保存し、Google カレンダーと Flask 画面で活用するためのシステムです。
+本アプリは、LINE から家計データを登録し、Google スプレッドシートに保存し、Google カレンダーと Flask 画面で活用するためのシステムです。
 
 ## 機能
 
