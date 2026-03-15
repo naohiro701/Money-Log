@@ -1,11 +1,7 @@
-"""HouseholdAccount v3 Flask app.
+"""Flask application for HouseholdAccount.
 
-管理画面として以下を担う:
-- 取引一覧と地図可視化
-- 取引詳細の編集
-- 監査ログの参照
-- 月次/カテゴリ別の簡易分析
-- 家庭バランスシート
+このモジュールは、画面表示と HTTP API の入口をまとめる。
+取引データ本体は `TransactionStore` から取得し、HTML または JSON として返す。
 """
 
 from __future__ import annotations
@@ -33,7 +29,14 @@ store = TransactionStore(
 
 
 def load_balance_snapshots() -> list[dict[str, Any]]:
-    """Load balance-sheet history from local JSON."""
+    """Load stored balance-sheet snapshots.
+
+    Input:
+        none
+
+    Output:
+        list[dict[str, Any]]: バランスシート履歴
+    """
     if not BALANCE_SNAPSHOT_PATH.exists():
         return []
 
@@ -46,14 +49,28 @@ def load_balance_snapshots() -> list[dict[str, Any]]:
 
 
 def save_balance_snapshots(snapshots: list[dict[str, Any]]) -> None:
-    """Persist balance-sheet history to local JSON."""
+    """Persist balance-sheet snapshots to local JSON.
+
+    Input:
+        snapshots: 保存したい履歴配列
+
+    Output:
+        None
+    """
     BALANCE_SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
     with BALANCE_SNAPSHOT_PATH.open("w", encoding="utf-8") as fp:
         json.dump(snapshots, fp, ensure_ascii=False, indent=2)
 
 
 def compute_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
-    """Validate and calculate balance-sheet totals."""
+    """Convert a balance-sheet form payload into one stored snapshot.
+
+    Input:
+        payload: `assets`, `liabilities`, `notes`, `action_plan` を含む JSON
+
+    Output:
+        dict[str, Any]: 保存用のスナップショット
+    """
     assets = payload.get("assets", {})
     liabilities = payload.get("liabilities", {})
 
@@ -83,7 +100,14 @@ def compute_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def calculate_cashflow_baseline(records: list[dict[str, Any]]) -> dict[str, int]:
-    """Build baseline numbers from the current ledger."""
+    """Summarize expense history for the balance-sheet screen.
+
+    Input:
+        records: 取引一覧
+
+    Output:
+        dict[str, int]: 年間支出、月平均支出、件数
+    """
     total_expense = 0
     transaction_count = 0
 
@@ -104,7 +128,14 @@ def calculate_cashflow_baseline(records: list[dict[str, Any]]) -> dict[str, int]
 
 @app.route("/")
 def dashboard() -> str:
-    """Render the main v3 management dashboard."""
+    """Render the main dashboard HTML.
+
+    Input:
+        none
+
+    Output:
+        str: レンダリング済み HTML
+    """
     transactions = store.list_transactions()
     return render_template(
         "index.html",
@@ -119,7 +150,14 @@ def dashboard() -> str:
 
 @app.get("/api/transactions")
 def api_list_transactions():
-    """Return dashboard data for the list view."""
+    """Return transactions and dashboard aggregates as JSON.
+
+    Input:
+        none
+
+    Output:
+        Response: 取引一覧と集計情報
+    """
     transactions = store.list_transactions()
     return jsonify(
         {
@@ -134,7 +172,14 @@ def api_list_transactions():
 
 @app.get("/api/transactions/<transaction_id>")
 def api_get_transaction(transaction_id: str):
-    """Return a single transaction detail."""
+    """Return one transaction detail as JSON.
+
+    Input:
+        transaction_id: 取引 ID
+
+    Output:
+        Response: 1件の取引データ
+    """
     transaction = store.get_transaction(transaction_id)
     if not transaction:
         return jsonify({"ok": False, "error": "transaction not found"}), 404
@@ -143,7 +188,15 @@ def api_get_transaction(transaction_id: str):
 
 @app.patch("/api/transactions/<transaction_id>")
 def api_update_transaction(transaction_id: str):
-    """Update a transaction from the dashboard."""
+    """Update one transaction from the edit form.
+
+    Input:
+        transaction_id: 取引 ID
+        request.json: 更新項目
+
+    Output:
+        Response: 更新結果
+    """
     payload = request.get_json(silent=True) or {}
     actor_user = request.headers.get("X-Actor-User", "flask-admin")
 
@@ -160,7 +213,14 @@ def api_update_transaction(transaction_id: str):
 
 @app.get("/api/audit-logs")
 def api_audit_logs():
-    """Return audit logs, optionally filtered by transaction id."""
+    """Return audit logs.
+
+    Input:
+        query parameter `transaction_id` (optional)
+
+    Output:
+        Response: 監査ログ一覧
+    """
     transaction_id = request.args.get("transaction_id", "").strip()
     logs = store.list_audit_logs(transaction_id=transaction_id or None)
     return jsonify({"ok": True, "audit_logs": logs})
@@ -168,7 +228,14 @@ def api_audit_logs():
 
 @app.route("/balance-sheet")
 def balance_sheet() -> str:
-    """Render household balance-sheet page."""
+    """Render the balance-sheet HTML.
+
+    Input:
+        none
+
+    Output:
+        str: レンダリング済み HTML
+    """
     records = store.list_transactions()
     baseline = calculate_cashflow_baseline(records)
     snapshots = load_balance_snapshots()
@@ -177,13 +244,27 @@ def balance_sheet() -> str:
 
 @app.get("/api/balance-sheet/snapshots")
 def get_balance_snapshots():
-    """List saved balance-sheet snapshots."""
+    """Return saved balance-sheet snapshots.
+
+    Input:
+        none
+
+    Output:
+        Response: スナップショット一覧
+    """
     return jsonify(load_balance_snapshots())
 
 
 @app.post("/api/balance-sheet/snapshots")
 def create_balance_snapshot():
-    """Create a new balance-sheet snapshot."""
+    """Create one balance-sheet snapshot from the form payload.
+
+    Input:
+        request.json: `assets`, `liabilities`, `notes`, `action_plan`
+
+    Output:
+        Response: 保存結果
+    """
     payload = request.get_json(silent=True) or {}
     if "assets" not in payload or "liabilities" not in payload:
         return jsonify({"ok": False, "error": "assets and liabilities are required"}), 400
@@ -201,7 +282,14 @@ def create_balance_snapshot():
 
 @app.get("/api/balance-sheet/recommendation")
 def balance_recommendation():
-    """Return actionable recommendation based on the latest snapshot."""
+    """Return one recommendation derived from the latest balance-sheet snapshot.
+
+    Input:
+        none
+
+    Output:
+        Response: 改善提案
+    """
     snapshots = load_balance_snapshots()
     latest = snapshots[-1] if snapshots else None
     baseline = calculate_cashflow_baseline(store.list_transactions())

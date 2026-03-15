@@ -1,4 +1,8 @@
-"""Storage and synchronization helpers for HouseholdAccount v3."""
+"""Data access layer for HouseholdAccount.
+
+`TransactionStore` は、Flask から見た取引データの入口を 1 つにまとめる。
+Apps Script と連携する場合も、ローカル JSON で動かす場合も、画面側は同じメソッドを使う。
+"""
 
 from __future__ import annotations
 
@@ -36,7 +40,16 @@ CATEGORY_TREE: dict[str, dict[str, list[str]]] = {
 
 
 class TransactionStore:
-    """Load and update transactions from GAS or local JSON."""
+    """Transaction storage gateway.
+
+    Input:
+        data_dir: ローカル JSON を置くディレクトリ
+        gas_base_url: Apps Script Web アプリ URL
+        gas_admin_token: Apps Script 管理 API トークン
+
+    Output:
+        Flask から使うデータ取得・更新メソッド群
+    """
 
     def __init__(
         self,
@@ -52,7 +65,18 @@ class TransactionStore:
         self.gas_admin_token = gas_admin_token
 
     def list_transactions(self) -> list[dict[str, Any]]:
-        """Return transactions from GAS when available, otherwise local JSON."""
+        """Load all transactions.
+
+        Input:
+            none
+
+        Output:
+            list[dict[str, Any]]: 正規化済み取引一覧
+
+        Notes:
+            Apps Script が設定されていればリモートから取得し、
+            未設定ならローカル JSON を読む。
+        """
         remote = self._remote_get("listTransactions")
         if remote is not None:
             payload = remote.get("transactions", remote)
@@ -69,7 +93,14 @@ class TransactionStore:
         )
 
     def get_transaction(self, transaction_id: str) -> dict[str, Any] | None:
-        """Return a single transaction."""
+        """Load one transaction by id.
+
+        Input:
+            transaction_id: 取引 ID
+
+        Output:
+            dict[str, Any] | None: 1件の取引。無ければ `None`
+        """
         remote = self._remote_get("getTransaction", {"transaction_id": transaction_id})
         if remote is not None:
             payload = remote.get("transaction")
@@ -83,7 +114,16 @@ class TransactionStore:
     def update_transaction(
         self, transaction_id: str, updates: dict[str, Any], actor_user: str
     ) -> dict[str, Any] | None:
-        """Update a transaction through GAS when configured, else local JSON."""
+        """Update one transaction.
+
+        Input:
+            transaction_id: 更新対象の取引 ID
+            updates: 更新項目
+            actor_user: 更新実行者
+
+        Output:
+            dict[str, Any] | None: 更新後の取引。見つからない場合は `None`
+        """
         if not transaction_id:
             raise ValueError("transaction_id is required")
 
@@ -125,7 +165,14 @@ class TransactionStore:
         return after
 
     def list_audit_logs(self, transaction_id: str | None = None) -> list[dict[str, Any]]:
-        """Return audit logs from GAS or local JSON."""
+        """Load audit logs.
+
+        Input:
+            transaction_id: 取引 ID。指定時はその取引だけを返す
+
+        Output:
+            list[dict[str, Any]]: 監査ログ一覧
+        """
         remote = self._remote_get(
             "auditLogs", {"transaction_id": transaction_id or ""}
         )
@@ -146,7 +193,14 @@ class TransactionStore:
         return self._sorted_audit_logs(logs)
 
     def build_summary(self, transactions: list[dict[str, Any]]) -> dict[str, Any]:
-        """Compute dashboard KPI cards."""
+        """Build dashboard KPI values.
+
+        Input:
+            transactions: 取引一覧
+
+        Output:
+            dict[str, Any]: 件数、総額、座標付き件数、未解決件数など
+        """
         total_amount = sum(int(row.get("amount_total", 0)) for row in transactions)
         geocoded_count = sum(
             1
@@ -179,7 +233,14 @@ class TransactionStore:
     def build_monthly_analysis(
         self, transactions: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """Aggregate transactions by month."""
+        """Aggregate transactions by month.
+
+        Input:
+            transactions: 取引一覧
+
+        Output:
+            list[dict[str, Any]]: 月別集計
+        """
         buckets: dict[str, dict[str, Any]] = {}
         for row in transactions:
             month = (row.get("date", "") or "unknown")[:7]
@@ -194,7 +255,14 @@ class TransactionStore:
     def build_category_breakdown(
         self, transactions: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """Aggregate transactions by main category."""
+        """Aggregate transactions by main category.
+
+        Input:
+            transactions: 取引一覧
+
+        Output:
+            list[dict[str, Any]]: 大分類別集計
+        """
         buckets: dict[str, dict[str, Any]] = {}
         for row in transactions:
             key = row.get("category_main") or "未設定"
@@ -212,7 +280,15 @@ class TransactionStore:
     def _remote_get(
         self, action: str, params: dict[str, Any] | None = None
     ) -> dict[str, Any] | None:
-        """Call GAS GET API. Fall back silently on network failures."""
+        """Call the Apps Script GET API.
+
+        Input:
+            action: API 名
+            params: クエリパラメータ
+
+        Output:
+            dict[str, Any] | None: JSON 応答。失敗時は `None`
+        """
         if not self.gas_base_url:
             return None
 
@@ -229,7 +305,15 @@ class TransactionStore:
             return None
 
     def _remote_post(self, action: str, payload: dict[str, Any]) -> dict[str, Any] | None:
-        """Call GAS POST API. Fall back silently on network failures."""
+        """Call the Apps Script POST API.
+
+        Input:
+            action: API 名
+            payload: 送信 JSON
+
+        Output:
+            dict[str, Any] | None: JSON 応答。失敗時は `None`
+        """
         if not self.gas_base_url or not self.gas_admin_token:
             return None
 
@@ -252,7 +336,15 @@ class TransactionStore:
     def _apply_updates(
         self, transaction: dict[str, Any], updates: dict[str, Any]
     ) -> dict[str, Any]:
-        """Apply local update logic."""
+        """Apply update payload to one normalized transaction.
+
+        Input:
+            transaction: 更新前の取引
+            updates: 更新内容
+
+        Output:
+            dict[str, Any]: 更新後の取引
+        """
         updated = deepcopy(transaction)
         allowed_fields = {
             "date",
@@ -291,7 +383,14 @@ class TransactionStore:
         return self._normalize_transaction(updated)
 
     def _normalize_transaction(self, row: dict[str, Any] | None) -> dict[str, Any]:
-        """Return a consistent transaction shape."""
+        """Normalize one transaction into the shape used by Flask.
+
+        Input:
+            row: Apps Script API またはローカル JSON の 1 レコード
+
+        Output:
+            dict[str, Any]: 正規化済み取引
+        """
         if not isinstance(row, dict):
             return {}
 
@@ -325,7 +424,14 @@ class TransactionStore:
         return normalized
 
     def _normalize_items(self, items: Any) -> list[dict[str, Any]]:
-        """Normalize line items."""
+        """Normalize line items into the shape used by Flask.
+
+        Input:
+            items: 明細配列
+
+        Output:
+            list[dict[str, Any]]: 正規化済み明細
+        """
         if not isinstance(items, list):
             return []
 
@@ -353,7 +459,17 @@ class TransactionStore:
         after: dict[str, Any],
         actor_user: str,
     ) -> None:
-        """Append an audit log entry to local JSON."""
+        """Append one audit log entry in local mode.
+
+        Input:
+            transaction_id: 取引 ID
+            before: 更新前データ
+            after: 更新後データ
+            actor_user: 更新実行者
+
+        Output:
+            None
+        """
         logs = self._read_json(self.audit_logs_path, [])
         if not isinstance(logs, list):
             logs = []
@@ -374,7 +490,14 @@ class TransactionStore:
     def _sorted_transactions(
         self, transactions: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
-        """Sort newest transactions first."""
+        """Sort transactions from newest to oldest.
+
+        Input:
+            transactions: 取引一覧
+
+        Output:
+            list[dict[str, Any]]: ソート済み取引一覧
+        """
         return sorted(
             [self._normalize_transaction(row) for row in transactions],
             key=lambda row: (row.get("date", ""), row.get("time", ""), row.get("updated_at", "")),
@@ -382,7 +505,14 @@ class TransactionStore:
         )
 
     def _sorted_audit_logs(self, logs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Sort newest audit logs first."""
+        """Sort audit logs from newest to oldest.
+
+        Input:
+            logs: 監査ログ一覧
+
+        Output:
+            list[dict[str, Any]]: ソート済み監査ログ一覧
+        """
         return sorted(
             logs,
             key=lambda row: str(row.get("timestamp", "")),
@@ -390,7 +520,15 @@ class TransactionStore:
         )
 
     def _read_json(self, path: Path, fallback: Any) -> Any:
-        """Read JSON data from disk."""
+        """Read JSON file safely.
+
+        Input:
+            path: 読み込む JSON ファイル
+            fallback: 失敗時に返す値
+
+        Output:
+            Any: 読み込み結果
+        """
         if not path.exists():
             return fallback
         try:
@@ -400,20 +538,44 @@ class TransactionStore:
             return fallback
 
     def _write_json(self, path: Path, data: Any) -> None:
-        """Write JSON data to disk."""
+        """Write JSON file.
+
+        Input:
+            path: 保存先ファイル
+            data: 書き込むデータ
+
+        Output:
+            None
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as fp:
             json.dump(data, fp, ensure_ascii=False, indent=2)
 
     def _to_int(self, value: Any, default: int = 0) -> int:
-        """Convert a value to int without raising."""
+        """Convert a value to int without raising.
+
+        Input:
+            value: 変換したい値
+            default: 失敗時の戻り値
+
+        Output:
+            int
+        """
         try:
             return int(float(value))
         except (TypeError, ValueError):
             return default
 
     def _to_float(self, value: Any, default: float = 0.0) -> float:
-        """Convert a value to float without raising."""
+        """Convert a value to float without raising.
+
+        Input:
+            value: 変換したい値
+            default: 失敗時の戻り値
+
+        Output:
+            float
+        """
         try:
             return float(value)
         except (TypeError, ValueError):

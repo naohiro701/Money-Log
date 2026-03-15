@@ -1,3 +1,13 @@
+/**
+ * 手入力フローの現在地を判定し、次に実行する関数へ渡す。
+ * 金額入力、カテゴリ選択、位置情報入力の順に取引を完成させる。
+ *
+ * Input:
+ * - `eventObj`: LINE の text または location メッセージ
+ *
+ * Output:
+ * - `createHandlerResult_` 形式の結果
+ */
 function handleManualMessage_(eventObj) {
   var userId = trimString_((eventObj.source || {}).userId) || "anonymous";
   var message = eventObj.message || {};
@@ -31,6 +41,18 @@ function handleManualMessage_(eventObj) {
   ]);
 }
 
+/**
+ * 金額入力を受け取り、下書き取引を新規作成する。
+ * ここでは金額と利用者 ID だけを保存し、カテゴリ選択は次のステップへ持ち越す。
+ *
+ * Input:
+ * - `eventObj`: LINE event object
+ * - `userId`: LINE user ID
+ * - `amountText`: 金額文字列
+ *
+ * Output:
+ * - 大分類選択用の返信メッセージ
+ */
 function startManualTransaction_(eventObj, userId, amountText) {
   var now = new Date();
   var transaction = {
@@ -69,6 +91,16 @@ function startManualTransaction_(eventObj, userId, amountText) {
   ]);
 }
 
+/**
+ * 大分類の選択結果を保存し、次の中分類選択へ進める。
+ *
+ * Input:
+ * - `eventObj`: LINE text event
+ * - `userStatus`: 現在の入力状態
+ *
+ * Output:
+ * - 中分類選択用の返信メッセージ
+ */
 function handleManualMainCategorySelection_(eventObj, userStatus) {
   var messageText = trimString_((eventObj.message || {}).text);
   if (getMainCategories_().indexOf(messageText) === -1) {
@@ -94,6 +126,16 @@ function handleManualMainCategorySelection_(eventObj, userStatus) {
   ]);
 }
 
+/**
+ * 中分類の選択結果を保存し、次の小分類選択へ進める。
+ *
+ * Input:
+ * - `eventObj`: LINE text event
+ * - `userStatus`: 現在の入力状態
+ *
+ * Output:
+ * - 小分類選択用の返信メッセージ
+ */
 function handleManualSubCategorySelection_(eventObj, userStatus) {
   var messageText = trimString_((eventObj.message || {}).text);
   var categoryMain = trimString_(userStatus.category_main);
@@ -123,6 +165,16 @@ function handleManualSubCategorySelection_(eventObj, userStatus) {
   ]);
 }
 
+/**
+ * 小分類の選択結果を保存し、最後の位置情報入力へ進める。
+ *
+ * Input:
+ * - `eventObj`: LINE text event
+ * - `userStatus`: 現在の入力状態
+ *
+ * Output:
+ * - 位置情報入力を促す返信メッセージ
+ */
 function handleManualDetailCategorySelection_(eventObj, userStatus) {
   var messageText = trimString_((eventObj.message || {}).text);
   var categoryMain = trimString_(userStatus.category_main);
@@ -153,6 +205,17 @@ function handleManualDetailCategorySelection_(eventObj, userStatus) {
   ]);
 }
 
+/**
+ * 手入力フローを完了し、位置情報を付与して取引を確定する。
+ * 取引確定後、Google カレンダーへの登録も実行する。
+ *
+ * Input:
+ * - `eventObj`: LINE location または text event
+ * - `userStatus`: 現在の入力状態
+ *
+ * Output:
+ * - 完了メッセージ
+ */
 function finalizeManualTransaction_(eventObj, userStatus) {
   var locationResult = resolveManualLocation_(eventObj.message || {});
   var existing = getTransactionById_(userStatus.transaction_id);
@@ -184,6 +247,16 @@ function finalizeManualTransaction_(eventObj, userStatus) {
   ]);
 }
 
+/**
+ * LINE メッセージから保存用の位置情報オブジェクトを作る。
+ * `location` メッセージならそのまま使い、テキストなら Geocode で住所と座標を補完する。
+ *
+ * Input:
+ * - `message`: LINE message object
+ *
+ * Output:
+ * - `{ store_name, address, latitude, longitude }`
+ */
 function resolveManualLocation_(message) {
   if (message.type === "location") {
     return {
@@ -203,4 +276,3 @@ function resolveManualLocation_(message) {
     longitude: geocode.longitude
   };
 }
-

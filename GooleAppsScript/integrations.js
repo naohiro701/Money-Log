@@ -1,3 +1,12 @@
+/**
+ * LINE の通常テキスト返信を作成する。
+ *
+ * Input:
+ * - `text`: 返信本文
+ *
+ * Output:
+ * - LINE Messaging API の text message オブジェクト
+ */
 function createTextMessage_(text) {
   return {
     type: "text",
@@ -5,6 +14,17 @@ function createTextMessage_(text) {
   };
 }
 
+/**
+ * LINE の選択式メッセージを作成する。
+ * 手入力フローでカテゴリを段階的に選んでもらうために使う。
+ *
+ * Input:
+ * - `altText`: LINE が代替表示に使う文言
+ * - `options`: 選択肢配列
+ *
+ * Output:
+ * - LINE Messaging API の flex message オブジェクト
+ */
 function createSelectionFlexMessage_(altText, options) {
   var limitedOptions = (options || []).slice(0, 10);
   return {
@@ -38,6 +58,16 @@ function createSelectionFlexMessage_(altText, options) {
   };
 }
 
+/**
+ * LINE へ返信メッセージを送信する。
+ *
+ * Input:
+ * - `replyToken`: LINE が発行した返信トークン
+ * - `messages`: 返信メッセージ配列または単体
+ *
+ * Output:
+ * - なし
+ */
 function replyLineMessage_(replyToken, messages) {
   var channelAccessToken = trimString_(getSetting_("line_channel_access_token", ""));
   if (!channelAccessToken || !replyToken) return;
@@ -59,6 +89,16 @@ function replyLineMessage_(replyToken, messages) {
   });
 }
 
+/**
+ * LINE から画像バイナリを取得する。
+ * レシート OCR フローの最初の入力データを用意する関数。
+ *
+ * Input:
+ * - `messageId`: LINE のメッセージ ID
+ *
+ * Output:
+ * - `Blob`
+ */
 function downloadLineMessageContent_(messageId) {
   var channelAccessToken = trimString_(getSetting_("line_channel_access_token", ""));
   if (!channelAccessToken) throw new Error("LINE token is not configured.");
@@ -76,6 +116,18 @@ function downloadLineMessageContent_(messageId) {
   return response.getBlob();
 }
 
+/**
+ * 受け取ったレシート画像を Google Drive に一時保存する。
+ * 後段の画像リサイズや障害調査に使えるよう、OCR 前の原本を一度ファイル化している。
+ *
+ * Input:
+ * - `blob`: 画像データ
+ * - `userId`: 送信者 ID
+ *
+ * Output:
+ * - `File`
+ * - 保存先未設定の場合は `null`
+ */
 function saveReceiptBlobToDrive_(blob, userId) {
   var folderId = trimString_(getSetting_("receipt_drive_folder_id", ""));
   if (!folderId) return null;
@@ -91,6 +143,17 @@ function saveReceiptBlobToDrive_(blob, userId) {
   return file;
 }
 
+/**
+ * OCR に渡す前に画像をリサイズする。
+ * 画像処理ライブラリが使えない環境では、元画像をそのまま返す。
+ *
+ * Input:
+ * - `file`: Drive に保存したファイル
+ * - `fallbackBlob`: リサイズ失敗時に使う元画像
+ *
+ * Output:
+ * - OCR に渡す `Blob`
+ */
 function resizeImageBlob_(file, fallbackBlob) {
   if (typeof ImgApp !== "undefined" && file && file.getId) {
     try {
@@ -103,6 +166,15 @@ function resizeImageBlob_(file, fallbackBlob) {
   return fallbackBlob;
 }
 
+/**
+ * Gemini Vision へ画像を送り、レシート情報を JSON として取得する。
+ *
+ * Input:
+ * - `imageBlob`: レシート画像
+ *
+ * Output:
+ * - OCR 生結果のオブジェクト
+ */
 function extractReceiptFromImage_(imageBlob) {
   var geminiApiKey = trimString_(getSetting_("gemini_api_key", ""));
   if (!geminiApiKey) throw new Error("Gemini API key is not configured.");
@@ -148,6 +220,16 @@ function extractReceiptFromImage_(imageBlob) {
   return parseJsonSafely_(cleaned, {});
 }
 
+/**
+ * OCR 生結果を台帳保存用の形式へ整える。
+ * 日付、時刻、金額、カテゴリ、明細の表記ゆれを吸収し、不足値には既定値を入れる。
+ *
+ * Input:
+ * - `rawReceipt`: OCR 生結果
+ *
+ * Output:
+ * - 正規化済みレシートデータ
+ */
 function normalizeReceiptPayload_(rawReceipt) {
   var today = new Date();
   var year = trimString_(rawReceipt.year) || Utilities.formatDate(today, "Asia/Tokyo", "yyyy");
@@ -185,6 +267,16 @@ function normalizeReceiptPayload_(rawReceipt) {
   };
 }
 
+/**
+ * 店舗名や住所から緯度経度を取得する。
+ * 住所未解決でも処理全体を止めず、`unknown` を返して保存を継続する。
+ *
+ * Input:
+ * - `queryText`: 店舗名または住所
+ *
+ * Output:
+ * - `{ address, latitude, longitude }`
+ */
 function geocodeQuery_(queryText) {
   var query = trimString_(queryText);
   if (!query) {
@@ -209,6 +301,15 @@ function geocodeQuery_(queryText) {
   return { address: "unknown", latitude: "unknown", longitude: "unknown" };
 }
 
+/**
+ * Google カレンダーの説明文を生成する。
+ *
+ * Input:
+ * - `transaction`: 取引データ
+ *
+ * Output:
+ * - 説明文文字列
+ */
 function buildCalendarDescription_(transaction) {
   return [
     "金額: " + transaction.amount_total + "円",
@@ -218,6 +319,15 @@ function buildCalendarDescription_(transaction) {
   ].filter(Boolean).join("\n");
 }
 
+/**
+ * 取引内容を Google カレンダーへ登録または更新する。
+ *
+ * Input:
+ * - `transaction`: 取引データ
+ *
+ * Output:
+ * - `{ status, eventId, error? }`
+ */
 function syncCalendarEvent_(transaction) {
   var calendarId = trimString_(getSetting_("calendar_id", ""));
   if (!calendarId) {
@@ -261,6 +371,15 @@ function syncCalendarEvent_(transaction) {
   }
 }
 
+/**
+ * 手入力完了時に返す確認メッセージを作る。
+ *
+ * Input:
+ * - `transaction`: 確定した取引
+ *
+ * Output:
+ * - 返信文字列
+ */
 function formatManualConfirmationText_(transaction) {
   return [
     "手入力の家計データを登録しました。",
@@ -271,6 +390,16 @@ function formatManualConfirmationText_(transaction) {
   ].join("\n");
 }
 
+/**
+ * レシート登録完了時に返す確認メッセージを作る。
+ *
+ * Input:
+ * - `transaction`: 保存済み取引
+ * - `items`: 明細配列
+ *
+ * Output:
+ * - 返信文字列
+ */
 function formatReceiptConfirmationText_(transaction, items) {
   var itemLines = (items || []).slice(0, 5).map(function (item) {
     return "・" + item.name + " x" + item.quantity + " / " + item.line_amount + "円";
@@ -284,4 +413,3 @@ function formatReceiptConfirmationText_(transaction, items) {
     "カテゴリ: " + [transaction.category_main, transaction.category_sub, transaction.category_detail].join(" > ")
   ].concat(itemLines).join("\n");
 }
-

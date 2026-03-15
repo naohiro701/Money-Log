@@ -1,3 +1,7 @@
+/**
+ * 家計カテゴリの 3 階層マスタ。
+ * LINE 手入力と OCR 結果の両方で同じカテゴリ体系を使うため、定義を一箇所に集約している。
+ */
 var CATEGORY_TREE_V3 = {
   "生活費(食住)": {
     "食費": ["食料品", "外食", "朝ご飯", "昼ご飯", "夜ご飯"],
@@ -23,25 +27,65 @@ var CATEGORY_TREE_V3 = {
   }
 };
 
+/**
+ * OCR でカテゴリが取れない場合や、入力値がマスタに存在しない場合の既定値。
+ */
 var CATEGORY_FALLBACK_V3 = {
   main: "保留",
   sub: "未分類",
   detail: "未分類"
 };
 
+/**
+ * 大分類の一覧を返す。
+ *
+ * Input: なし
+ * Output:
+ * - `["生活費(食住)", ...]`
+ */
 function getMainCategories_() {
   return Object.keys(CATEGORY_TREE_V3);
 }
 
+/**
+ * 指定した大分類に属する中分類一覧を返す。
+ *
+ * Input:
+ * - `mainCategory`: 大分類名
+ *
+ * Output:
+ * - 中分類配列
+ */
 function getSubCategories_(mainCategory) {
   return CATEGORY_TREE_V3[mainCategory] ? Object.keys(CATEGORY_TREE_V3[mainCategory]) : [];
 }
 
+/**
+ * 指定した大分類・中分類に属する小分類一覧を返す。
+ *
+ * Input:
+ * - `mainCategory`: 大分類名
+ * - `subCategory`: 中分類名
+ *
+ * Output:
+ * - 小分類配列
+ */
 function getDetailCategories_(mainCategory, subCategory) {
   if (!CATEGORY_TREE_V3[mainCategory]) return [];
   return CATEGORY_TREE_V3[mainCategory][subCategory] || [];
 }
 
+/**
+ * 任意のカテゴリ文字列から、3階層のカテゴリパスを決定する。
+ * OCR では大分類だけ、中分類だけ、小分類だけ返る場合があるため、
+ * どの階層の値が来ても保存用の `{main, sub, detail}` に正規化する。
+ *
+ * Input:
+ * - `rawValue`: OCR または更新 API から渡されたカテゴリ文字列
+ *
+ * Output:
+ * - `{ main, sub, detail }`
+ */
 function resolveCategoryPath_(rawValue) {
   var normalized = trimString_(rawValue);
   if (!normalized) return CATEGORY_FALLBACK_V3;
@@ -86,4 +130,3 @@ function resolveCategoryPath_(rawValue) {
 
   return CATEGORY_FALLBACK_V3;
 }
-

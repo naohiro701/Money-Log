@@ -1,3 +1,13 @@
+/**
+ * レシート画像 1 件を取引データへ変換し、保存と同期を行う。
+ * この関数が OCR フロー全体の実行単位になる。
+ *
+ * Input:
+ * - `eventObj`: LINE の image メッセージ event
+ *
+ * Output:
+ * - `createHandlerResult_` 形式の返信内容
+ */
 function handleReceiptMessage_(eventObj) {
   var userId = trimString_((eventObj.source || {}).userId) || "anonymous";
   var driveFile = null;
@@ -69,4 +79,3 @@ function handleReceiptMessage_(eventObj) {
     }
   }
 }
-
